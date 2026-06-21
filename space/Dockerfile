@@ -20,4 +20,4 @@ COPY --chown=user . .
 EXPOSE 7860
 
 # Start the API in the background, wait a moment, then launch the dashboard
-CMD ["bash", "-c", "uvicorn api:app --host 0.0.0.0 --port 8000 & sleep 8 && streamlit run streamlit_app.py --server.port 7860 --server.address 0.0.0.0"]
+CMD ["bash", "-c", "uvicorn api:app --host 0.0.0.0 --port 8000 & sleep 8 && streamlit run streamlit_app.py --server.port 7860 --server.address 0.0.0.0 --server.enableCORS false --server.enableXsrfProtection false"]
