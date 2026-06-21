@@ -1,0 +1,33 @@
+{
+  "input_w": 72,
+  "output_h": 24,
+  "quantiles": [
+    0.1,
+    0.5,
+    0.9
+  ],
+  "hidden": 64,
+  "layers": 2,
+  "n_features": 18,
+  "calib_c": 1.275,
+  "feature_cols": [
+    "load",
+    "price",
+    "solar",
+    "wind",
+    "temp",
+    "humidity",
+    "wind_speed",
+    "clouds",
+    "rain",
+    "hour",
+    "dayofweek",
+    "month",
+    "is_weekend",
+    "hour_sin",
+    "hour_cos",
+    "load_lag_24",
+    "load_lag_168",
+    "load_roll_24"
+  ]
+}

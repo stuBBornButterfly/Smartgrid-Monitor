@@ -14,6 +14,13 @@ model, feat_scaler, target_scaler, cfg = m.load_artifacts()
 recent = m.load_recent_data()
 _cache = {}
 
+# Day-ahead model is optional — API still runs if its files aren't present yet
+try:
+    qmodel_da, qcfg = m.load_quantile_artifacts()
+except Exception as e:
+    qmodel_da, qcfg = None, None
+    print("Day-ahead model not loaded:", e)
+
 
 def get_processed():
     """Run forecast + anomaly + cost over the recent data once, then reuse."""
@@ -30,7 +37,7 @@ def root():
     return {"service": "SmartGrid Monitor API",
             "docs": "/docs",
             "endpoints": ["/health", "/forecast/next", "/forecast/series",
-                          "/anomalies", "/cost/whatif"]}
+                          "/forecast/dayahead", "/anomalies", "/cost/whatif"]}
 
 
 @app.get("/health")
@@ -69,3 +76,10 @@ def anomalies():
 def cost_whatif(shave: float = Query(0.10, ge=0, le=1),
                 price_q: float = Query(0.90, ge=0, le=1)):
     return m.whatif_saving(get_processed(), shave=shave, price_q=price_q)
+
+
+@app.get("/forecast/dayahead")
+def forecast_dayahead():
+    if qmodel_da is None:
+        return {"error": "day-ahead model not available"}
+    return m.predict_dayahead(recent, qmodel_da, qcfg, feat_scaler, target_scaler)

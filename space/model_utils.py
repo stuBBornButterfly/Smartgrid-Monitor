@@ -44,6 +44,22 @@ class LoadLSTM(nn.Module):
         return self.fc(out[:, -1, :])
 
 
+class QuantileLSTM(nn.Module):
+    """Day-ahead model: past window -> next `horizon` hours at `n_quantiles` levels."""
+    def __init__(self, n_features, horizon, n_quantiles,
+                 hidden=64, layers=2, dropout=0.3):
+        super().__init__()
+        self.lstm = nn.LSTM(n_features, hidden, layers,
+                            batch_first=True, dropout=dropout)
+        self.fc = nn.Linear(hidden, horizon * n_quantiles)
+        self.horizon, self.nq = horizon, n_quantiles
+
+    def forward(self, x):
+        out, _ = self.lstm(x)
+        out = self.fc(out[:, -1, :])
+        return out.view(-1, self.horizon, self.nq)
+
+
 # ── Load everything once ─────────────────────────────────────────────────────
 def load_artifacts(art_dir=ART):
     art_dir = Path(art_dir)
@@ -112,3 +128,32 @@ def whatif_saving(out, shave=0.10, price_q=0.90):
     return {"hours_affected": int(mask.sum()),
             "saving": saving,
             "saving_pct": 100 * saving / total}
+
+
+# ── Day-ahead (24h) probabilistic forecast ───────────────────────────────────
+def load_quantile_artifacts(art_dir=ART):
+    art_dir = Path(art_dir)
+    with open(art_dir / "quantile_config.json") as f:
+        cfg = json.load(f)
+    model = QuantileLSTM(cfg["n_features"], cfg["output_h"], len(cfg["quantiles"]),
+                         hidden=cfg["hidden"], layers=cfg["layers"])
+    model.load_state_dict(torch.load(art_dir / "quantile_lstm.pt", map_location="cpu"))
+    model.eval()
+    return model, cfg
+
+
+def predict_dayahead(df, qmodel, qcfg, feat_scaler, target_scaler):
+    """Predict the next `output_h` hours with a calibrated P10-P90 band."""
+    feats, W, c = qcfg["feature_cols"], qcfg["input_w"], qcfg["calib_c"]
+    X = feat_scaler.transform(df[feats].tail(W))
+    x = torch.tensor(X, dtype=torch.float32).unsqueeze(0)
+    with torch.no_grad():
+        out = qmodel(x).numpy()[0]          # (horizon, 3), scaled
+    inv = lambda a: target_scaler.inverse_transform(a.reshape(-1, 1)).flatten()
+    p10, p50, p90 = inv(out[:, 0]), inv(out[:, 1]), inv(out[:, 2])
+    low  = p50 - c * (p50 - p10)            # apply calibration width factor
+    high = p50 + c * (p90 - p50)
+    return {"hours_ahead": list(range(1, qcfg["output_h"] + 1)),
+            "median": p50.round(1).tolist(),
+            "low":  low.round(1).tolist(),
+            "high": high.round(1).tolist()}

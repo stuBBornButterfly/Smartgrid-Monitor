@@ -59,6 +59,25 @@ if anom["count"]:
     with st.expander(f"See {anom['count']} flagged hours"):
         st.dataframe(pd.DataFrame(anom["anomalies"]), use_container_width=True)
 
+# ── Day-ahead 24h forecast with uncertainty ─────────────────────────────────
+st.subheader("🔮 Day-ahead forecast (next 24h) with uncertainty")
+da = get("/forecast/dayahead")
+if "error" in da:
+    st.info("Day-ahead model not loaded on the server.")
+else:
+    h = da["hours_ahead"]
+    figd = go.Figure()
+    figd.add_trace(go.Scatter(x=h, y=da["high"], line=dict(width=0),
+                              showlegend=False, hoverinfo="skip"))
+    figd.add_trace(go.Scatter(x=h, y=da["low"], fill="tonexty",
+                              fillcolor="rgba(31,119,180,0.2)", line=dict(width=0),
+                              name="P10–P90 band"))
+    figd.add_trace(go.Scatter(x=h, y=da["median"], line=dict(color="#1f77b4", width=2),
+                              name="Median forecast"))
+    figd.update_layout(xaxis_title="Hours ahead", yaxis_title="MW",
+                       height=420, legend=dict(orientation="h"))
+    st.plotly_chart(figd, use_container_width=True)
+
 # ── Cost decision-support ────────────────────────────────────────────────────
 st.subheader("💸 Cost decision-support — what-if peak shaving")
 col1, col2 = st.columns(2)
