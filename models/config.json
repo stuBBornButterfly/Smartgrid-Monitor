@@ -1,0 +1,27 @@
+{
+  "feature_cols": [
+    "load",
+    "price",
+    "solar",
+    "wind",
+    "temp",
+    "humidity",
+    "wind_speed",
+    "clouds",
+    "rain",
+    "hour",
+    "dayofweek",
+    "month",
+    "is_weekend",
+    "hour_sin",
+    "hour_cos",
+    "load_lag_24",
+    "load_lag_168",
+    "load_roll_24"
+  ],
+  "target_col": "load",
+  "window": 24,
+  "hidden": 64,
+  "layers": 2,
+  "n_features": 18
+}
